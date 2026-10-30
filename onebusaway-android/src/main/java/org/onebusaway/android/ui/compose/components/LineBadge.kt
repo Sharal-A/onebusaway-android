@@ -185,6 +185,13 @@ fun LineBadge(
 
     // Largest font in [minFontSize, maxFontSize] whose measured text fits the width × maxHeight /
     // maxLines box; measured here (not via onTextLayout) so it's right on the first frame and in @Preview.
+    //
+    // A size is accepted only when BOTH conditions hold:
+    //   1. The full text fits the width×height box without visual overflow (existing check).
+    //   2. No individual whitespace-separated word needs to be broken mid-word to fit on a line
+    //      (each word measured with softWrap=false against the same textWidth).
+    // Condition 2 prevents single-word names like "M70" from wrapping as "M7 / 0" while still
+    // allowing intentional multi-word breaks like "G Line" → two centered lines.
     val fontSize = remember(text, textWidth, fitHeight, maxFontSize, minFontSize, maxLines, density, baseStyle) {
         with(density) {
             val constraints = if (fitHeight.isSpecified) {
@@ -192,11 +199,19 @@ fun LineBadge(
             } else {
                 Constraints(maxWidth = textWidth.roundToPx())
             }
+            // Per-word check: each token must fit on a single line without soft-wrapping.
+            val wordConstraints = Constraints(maxWidth = textWidth.roundToPx())
+            val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }
             var size = maxFontSize
-            while (size.value > minFontSize.value &&
-                measurer.measure(text, styleAt(size), maxLines = maxLines, constraints = constraints)
+            while (size.value > minFontSize.value) {
+                val style = styleAt(size)
+                val blockFits = !measurer.measure(text, style, maxLines = maxLines, constraints = constraints)
                     .hasVisualOverflow
-            ) {
+                val noWordBreaks = words.all { word ->
+                    !measurer.measure(word, style, maxLines = 1, softWrap = false, constraints = wordConstraints)
+                        .hasVisualOverflow
+                }
+                if (blockFits && noWordBreaks) break
                 size = (size.value * SHRINK_STEP).sp
             }
             size
@@ -258,7 +273,7 @@ private fun LineBadgePreview() {
             Column(Modifier.padding(12.dp)) {
                 // Each badge is outlined so the fixed 64dp-wide rectangle is visible; short names use
                 // the full size while longer ones shrink (and wrap) to stay inside it.
-                listOf("8", "44", "550", "G Line", "Swift", "RapidRide A", "Chattanooga Choo Choo Very Much Far Too Long").forEach { label ->
+                listOf("8", "44", "550", "M70", "9999", "G Line", "Swift", "RapidRide A", "Chattanooga Choo Choo Very Much Far Too Long").forEach { label ->
                     Row(
                         Modifier.padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically

@@ -102,7 +102,10 @@ class SwipeToHideTest {
             moveBy(Offset(-width * 0.8f, 0f))
             up()
         }
-        compose.waitForIdle()
+        // Advance the test clock explicitly to let the spring-back animation settle without
+        // calling waitForIdle(), which blocks on Espresso's window-focus check and can deadlock
+        // if the activity loses focus mid-animation (e.g. a GMS background process takes focus).
+        compose.mainClock.advanceTimeBy(500)
 
         assertEquals("a swipe pulled back before release must not hide the row", 0, hides)
         compose.onNodeWithTag("a").assertIsDisplayed()

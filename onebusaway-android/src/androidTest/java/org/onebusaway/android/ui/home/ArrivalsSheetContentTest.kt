@@ -17,7 +17,10 @@ package org.onebusaway.android.ui.home
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -144,6 +147,10 @@ class ArrivalsSheetContentTest(private val nearby: Boolean) {
         }
         var panelPx by remember { mutableIntStateOf(0) }
         val peek = minOf(with(LocalDensity.current) { panelPx.toDp() } + 24.dp, 120.dp)
+        // Consume navigation bar insets at the harness root so ArrivalsSheetContent's
+        // navigationBarsPadding() sees zero insets — the test is otherwise coupled to the
+        // emulator's actual bar height (72 px on a Pixel 8 Pro, 24 dp at 480 dpi).
+        Box(Modifier.consumeWindowInsets(WindowInsets.navigationBars)) {
         BottomSheetScaffold(
             modifier = Modifier.size(360.dp, 560.dp).testTag("scaffold"),
             scaffoldState = rememberBottomSheetScaffoldState(
@@ -157,6 +164,7 @@ class ArrivalsSheetContentTest(private val nearby: Boolean) {
                 }
             }
         ) {}
+        }
     }
 
     @Composable
